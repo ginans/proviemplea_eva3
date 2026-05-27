@@ -1,0 +1,13 @@
+@startuml
+skinparam actorStyle awesome
+actor Postman as "Postman (Cliente)"
+node Nginx as "Nginx (Servidor Web)"
+node PHPFPM as "PHP-FPM (Intérprete)"
+folder Laravel as "Laravel (Framework)"
+component HealthController as "HealthController (Controlador)"
+
+Postman -> Nginx : GET /api/health
+Nginx -> PHPFPM : FastCGI
+PHPFPM -> Laravel : Execute
+Laravel -> HealthController : check()
+@enduml

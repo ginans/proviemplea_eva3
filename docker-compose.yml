@@ -1,0 +1,31 @@
+services:
+  # Nginx
+  web:
+    image: nginx:stable-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./:/var/www/html
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+
+  # El motor de PHP 8.2
+  app:
+    build: .
+    volumes:
+      - ./:/var/www/html
+
+  # MySQL
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - ${DB_PORT}
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:
