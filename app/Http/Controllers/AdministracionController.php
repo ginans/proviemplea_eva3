@@ -8,22 +8,22 @@ use App\Models\Persona;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use OpenApi\Attributes as OA;
 
 class AdministracionController extends Controller
 {
-    /**
-     * @OA\Get(
-     *     path="/admin/contactos",
-     *     operationId="getContactosSolicitados",
-     *     tags={"Administración"},
-     *     summary="Listar contactos solicitados",
-     *     @OA\Parameter(name="estado", in="query", required=false,
-     *         @OA\Schema(type="string",
-     *             enum={"pendiente","contactado","entrevista","seleccionado","no-seleccionado","proceso-cerrado"})),
-     *     @OA\Response(response=200, description="Listado exitoso",
-     *         @OA\JsonContent(type="array", @OA\Items(ref="#/components/schemas/ContactoSolicitado")))
-     * )
-     */
+    #[OA\Get(
+        path: "/admin/contactos",
+        operationId: "getContactosSolicitados",
+        tags: ["Administración"],
+        summary: "Listar contactos solicitados"
+    )]
+    #[OA\Parameter(name: "estado", in: "query", required: false, schema: new OA\Schema(type: "string", enum: ["pendiente","contactado","entrevista","seleccionado","no-seleccionado","proceso-cerrado"]))]
+    #[OA\Response(
+        response: 200,
+        description: "Listado exitoso",
+        content: new OA\JsonContent(type: "array", items: new OA\Items(ref: "#/components/schemas/ContactoSolicitado"))
+    )]
     public function listarContactos(Request $request): JsonResponse
     {
         $query = ContactoSolicitado::with(['empresa', 'persona']);
@@ -33,21 +33,24 @@ class AdministracionController extends Controller
         return $this->successResponse($query->orderBy('created_at', 'desc')->get());
     }
 
-    /**
-     * @OA\Post(
-     *     path="/admin/contactos",
-     *     operationId="crearContactoSolicitado",
-     *     tags={"Administración"},
-     *     summary="Registrar solicitud de contacto",
-     *     description="Una empresa solicita contactar a un talento. No puede existir una solicitud activa previa.",
-     *     @OA\RequestBody(required=true,
-     *         @OA\JsonContent(ref="#/components/schemas/ContactoSolicitadoInput")),
-     *     @OA\Response(response=201, description="Contacto registrado",
-     *         @OA\JsonContent(ref="#/components/schemas/ContactoSolicitado")),
-     *     @OA\Response(response=409, description="Ya existe una solicitud activa"),
-     *     @OA\Response(response=422, description="Errores de validación")
-     * )
-     */
+    #[OA\Post(
+        path: "/admin/contactos",
+        operationId: "crearContactoSolicitado",
+        tags: ["Administración"],
+        summary: "Registrar solicitud de contacto",
+        description: "Una empresa solicita contactar a un talento. No puede existir una solicitud activa previa."
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(ref: "#/components/schemas/ContactoSolicitadoInput")
+    )]
+    #[OA\Response(
+        response: 201,
+        description: "Contacto registrado",
+        content: new OA\JsonContent(ref: "#/components/schemas/ContactoSolicitado")
+    )]
+    #[OA\Response(response: 409, description: "Ya existe una solicitud activa")]
+    #[OA\Response(response: 422, description: "Errores de validación")]
     public function crearContacto(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -73,27 +76,30 @@ class AdministracionController extends Controller
         return $this->successResponse($contacto->load(['empresa', 'persona']), 201);
     }
 
-    /**
-     * @OA\Patch(
-     *     path="/admin/contactos/{id}/estado",
-     *     operationId="actualizarEstadoContacto",
-     *     tags={"Administración"},
-     *     summary="Actualizar estado de contacto",
-     *     description="Cambia el estado del proceso. Las fechas se registran automáticamente según el estado.",
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
-     *     @OA\RequestBody(required=true,
-     *         @OA\JsonContent(
-     *             required={"estado"},
-     *             @OA\Property(property="estado", type="string",
-     *                 enum={"pendiente","contactado","entrevista","seleccionado","no-seleccionado","proceso-cerrado"}),
-     *             @OA\Property(property="notas_admin", type="string", nullable=true)
-     *         )
-     *     ),
-     *     @OA\Response(response=200, description="Estado actualizado",
-     *         @OA\JsonContent(ref="#/components/schemas/ContactoSolicitado")),
-     *     @OA\Response(response=404, description="Contacto no encontrado")
-     * )
-     */
+    #[OA\Patch(
+        path: "/admin/contactos/{id}/estado",
+        operationId: "actualizarEstadoContacto",
+        tags: ["Administración"],
+        summary: "Actualizar estado de contacto",
+        description: "Cambia el estado del proceso. Las fechas se registran automáticamente según el estado."
+    )]
+    #[OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "string"))]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ["estado"],
+            properties: [
+                new OA\Property(property: "estado", type: "string", enum: ["pendiente","contactado","entrevista","seleccionado","no-seleccionado","proceso-cerrado"]),
+                new OA\Property(property: "notas_admin", type: "string", nullable: true)
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Estado actualizado",
+        content: new OA\JsonContent(ref: "#/components/schemas/ContactoSolicitado")
+    )]
+    #[OA\Response(response: 404, description: "Contacto no encontrado")]
     public function actualizarEstado(Request $request, string $contacto): JsonResponse
     {
         $model = ContactoSolicitado::find($contacto);
@@ -124,25 +130,27 @@ class AdministracionController extends Controller
         return $this->successResponse($model->load(['empresa', 'persona']));
     }
 
-    /**
-     * @OA\Get(
-     *     path="/admin/estadisticas",
-     *     operationId="getEstadisticas",
-     *     tags={"Administración"},
-     *     summary="Estadísticas generales de la plataforma",
-     *     @OA\Response(response=200, description="Estadísticas generadas",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="total_personas",       type="integer", example=45),
-     *             @OA\Property(property="personas_validadas",   type="integer", example=38),
-     *             @OA\Property(property="total_empresas",       type="integer", example=12),
-     *             @OA\Property(property="empresas_validadas",   type="integer", example=10),
-     *             @OA\Property(property="contactos_pendientes", type="integer", example=5),
-     *             @OA\Property(property="contactos_en_proceso", type="integer", example=8),
-     *             @OA\Property(property="contactos_exitosos",   type="integer", example=15)
-     *         )
-     *     )
-     * )
-     */
+    #[OA\Get(
+        path: "/admin/estadisticas",
+        operationId: "getEstadisticas",
+        tags: ["Administración"],
+        summary: "Estadísticas generales de la plataforma"
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Estadísticas generadas",
+        content: new OA\JsonContent(
+            properties: [
+                new OA\Property(property: "total_personas", type: "integer", example: 45),
+                new OA\Property(property: "personas_validadas", type: "integer", example: 38),
+                new OA\Property(property: "total_empresas", type: "integer", example: 12),
+                new OA\Property(property: "empresas_validadas", type: "integer", example: 10),
+                new OA\Property(property: "contactos_pendientes", type: "integer", example: 5),
+                new OA\Property(property: "contactos_en_proceso", type: "integer", example: 8),
+                new OA\Property(property: "contactos_exitosos", type: "integer", example: 15)
+            ]
+        )
+    )]
     public function estadisticas(): JsonResponse
     {
         return $this->successResponse([
