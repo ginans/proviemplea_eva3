@@ -6,21 +6,22 @@ use App\Models\Empresa;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use OpenApi\Attributes as OA;
 
 class EmpresaController extends Controller
 {
-    /**
-     * @OA\Get(
-     *     path="/empresas",
-     *     operationId="getEmpresas",
-     *     tags={"Empresas"},
-     *     summary="Listar empresas validadas",
-     *     @OA\Parameter(name="tipo_empresa", in="query", required=false,
-     *         @OA\Schema(type="string", enum={"contratacion-directa","est","outsourcing"})),
-     *     @OA\Response(response=200, description="Listado exitoso",
-     *         @OA\JsonContent(type="array", @OA\Items(ref="#/components/schemas/Empresa")))
-     * )
-     */
+    #[OA\Get(
+        path: "/empresas",
+        operationId: "getEmpresas",
+        tags: ["Empresas"],
+        summary: "Listar empresas validadas"
+    )]
+    #[OA\Parameter(name: "tipo_empresa", in: "query", required: false, schema: new OA\Schema(type: "string", enum: ["contratacion-directa","est","outsourcing"]))]
+    #[OA\Response(
+        response: 200,
+        description: "Listado exitoso",
+        content: new OA\JsonContent(type: "array", items: new OA\Items(ref: "#/components/schemas/Empresa"))
+    )]
     public function index(Request $request): JsonResponse
     {
         $query = Empresa::where('activo', true);
@@ -30,19 +31,22 @@ class EmpresaController extends Controller
         return $this->successResponse($query->get());
     }
 
-    /**
-     * @OA\Post(
-     *     path="/empresas",
-     *     operationId="createEmpresa",
-     *     tags={"Empresas"},
-     *     summary="Registrar nueva empresa",
-     *     @OA\RequestBody(required=true,
-     *         @OA\JsonContent(ref="#/components/schemas/EmpresaInput")),
-     *     @OA\Response(response=201, description="Empresa creada",
-     *         @OA\JsonContent(ref="#/components/schemas/Empresa")),
-     *     @OA\Response(response=422, description="Errores de validación")
-     * )
-     */
+    #[OA\Post(
+        path: "/empresas",
+        operationId: "createEmpresa",
+        tags: ["Empresas"],
+        summary: "Registrar nueva empresa"
+    )]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(ref: "#/components/schemas/EmpresaInput")
+    )]
+    #[OA\Response(
+        response: 201,
+        description: "Empresa creada",
+        content: new OA\JsonContent(ref: "#/components/schemas/Empresa")
+    )]
+    #[OA\Response(response: 422, description: "Errores de validación")]
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -67,18 +71,19 @@ class EmpresaController extends Controller
         return $this->successResponse(Empresa::create($validator->validated()), 201);
     }
 
-    /**
-     * @OA\Get(
-     *     path="/empresas/{id}",
-     *     operationId="getEmpresa",
-     *     tags={"Empresas"},
-     *     summary="Obtener empresa por ID",
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
-     *     @OA\Response(response=200, description="Empresa encontrada",
-     *         @OA\JsonContent(ref="#/components/schemas/Empresa")),
-     *     @OA\Response(response=404, description="No encontrada")
-     * )
-     */
+    #[OA\Get(
+        path: "/empresas/{id}",
+        operationId: "getEmpresa",
+        tags: ["Empresas"],
+        summary: "Obtener empresa por ID"
+    )]
+    #[OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "string"))]
+    #[OA\Response(
+        response: 200,
+        description: "Empresa encontrada",
+        content: new OA\JsonContent(ref: "#/components/schemas/Empresa")
+    )]
+    #[OA\Response(response: 404, description: "No encontrada")]
     public function show(string $empresa): JsonResponse
     {
         $model = Empresa::find($empresa);
@@ -88,19 +93,23 @@ class EmpresaController extends Controller
         return $this->successResponse($model);
     }
 
-    /**
-     * @OA\Put(
-     *     path="/empresas/{id}",
-     *     operationId="updateEmpresa",
-     *     tags={"Empresas"},
-     *     summary="Actualizar empresa",
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
-     *     @OA\RequestBody(required=true,
-     *         @OA\JsonContent(ref="#/components/schemas/EmpresaInput")),
-     *     @OA\Response(response=200, description="Empresa actualizada"),
-     *     @OA\Response(response=404, description="No encontrada")
-     * )
-     */
+    #[OA\Put(
+        path: "/empresas/{id}",
+        operationId: "updateEmpresa",
+        tags: ["Empresas"],
+        summary: "Actualizar empresa"
+    )]
+    #[OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "string"))]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(ref: "#/components/schemas/EmpresaInput")
+    )]
+    #[OA\Response(
+        response: 200,
+        description: "Empresa actualizada",
+        content: new OA\JsonContent(ref: "#/components/schemas/Empresa")
+    )]
+    #[OA\Response(response: 404, description: "No encontrada")]
     public function update(Request $request, string $empresa): JsonResponse
     {
         $model = Empresa::find($empresa);
@@ -131,17 +140,19 @@ class EmpresaController extends Controller
         return $this->successResponse($model->fresh());
     }
 
-    /**
-     * @OA\Patch(
-     *     path="/empresas/{id}/validar",
-     *     operationId="validarEmpresa",
-     *     tags={"Empresas"},
-     *     summary="Validar empresa (solo administración)",
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
-     *     @OA\Response(response=200, description="Empresa validada"),
-     *     @OA\Response(response=404, description="No encontrada")
-     * )
-     */
+    #[OA\Patch(
+        path: "/empresas/{id}/validar",
+        operationId: "validarEmpresa",
+        tags: ["Empresas"],
+        summary: "Validar empresa (solo administración)"
+    )]
+    #[OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "string"))]
+    #[OA\Response(
+        response: 200,
+        description: "Empresa validada",
+        content: new OA\JsonContent(ref: "#/components/schemas/Empresa")
+    )]
+    #[OA\Response(response: 404, description: "No encontrada")]
     public function validar(string $empresa): JsonResponse
     {
         $model = Empresa::find($empresa);
@@ -152,18 +163,16 @@ class EmpresaController extends Controller
         return $this->successResponse($model->fresh());
     }
 
-    /**
-     * @OA\Delete(
-     *     path="/empresas/{id}",
-     *     operationId="deleteEmpresa",
-     *     tags={"Empresas"},
-     *     summary="Desactivar empresa",
-     *     description="Desactiva el perfil sin eliminarlo de la base de datos.",
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
-     *     @OA\Response(response=200, description="Empresa desactivada"),
-     *     @OA\Response(response=404, description="No encontrada")
-     * )
-     */
+    #[OA\Delete(
+        path: "/empresas/{id}",
+        operationId: "deleteEmpresa",
+        tags: ["Empresas"],
+        summary: "Desactivar empresa",
+        description: "Desactiva el perfil sin eliminarlo de la base de datos."
+    )]
+    #[OA\Parameter(name: "id", in: "path", required: true, schema: new OA\Schema(type: "string"))]
+    #[OA\Response(response: 200, description: "Empresa desactivada")]
+    #[OA\Response(response: 404, description: "No encontrada")]
     public function destroy(string $empresa): JsonResponse
     {
         $model = Empresa::find($empresa);
