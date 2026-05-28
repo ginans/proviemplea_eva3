@@ -3,63 +3,174 @@
 namespace App\Http\Controllers;
 
 use App\Models\Empresa;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class EmpresaController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * @OA\Get(
+     *     path="/empresas",
+     *     operationId="getEmpresas",
+     *     tags={"Empresas"},
+     *     summary="Listar empresas validadas",
+     *     @OA\Parameter(name="tipo_empresa", in="query", required=false,
+     *         @OA\Schema(type="string", enum={"contratacion-directa","est","outsourcing"})),
+     *     @OA\Response(response=200, description="Listado exitoso",
+     *         @OA\JsonContent(type="array", @OA\Items(ref="#/components/schemas/Empresa")))
+     * )
      */
-    public function index()
+    public function index(Request $request): JsonResponse
     {
-        //
+        $query = Empresa::where('activo', true);
+        if ($request->has('tipo_empresa')) {
+            $query->where('tipo_empresa', $request->input('tipo_empresa'));
+        }
+        return $this->successResponse($query->get());
     }
 
     /**
-     * Show the form for creating a new resource.
+     * @OA\Post(
+     *     path="/empresas",
+     *     operationId="createEmpresa",
+     *     tags={"Empresas"},
+     *     summary="Registrar nueva empresa",
+     *     @OA\RequestBody(required=true,
+     *         @OA\JsonContent(ref="#/components/schemas/EmpresaInput")),
+     *     @OA\Response(response=201, description="Empresa creada",
+     *         @OA\JsonContent(ref="#/components/schemas/Empresa")),
+     *     @OA\Response(response=422, description="Errores de validación")
+     * )
      */
-    public function create()
+    public function store(Request $request): JsonResponse
     {
-        //
+        $validator = Validator::make($request->all(), [
+            'nombre_empresa'    => 'required|string|max:255',
+            'rut_empresa'       => 'required|string|max:20|unique:empresas,rut_empresa',
+            'email'             => 'required|email|unique:empresas,email',
+            'logo_url'          => 'nullable|url',
+            'rubro'             => 'nullable|string|max:100',
+            'tipo_empresa'      => 'required|in:contratacion-directa,est,outsourcing',
+            'presentacion'      => 'nullable|string',
+            'beneficios'        => 'nullable|array',
+            'beneficios.*'      => 'string',
+            'contacto_nombre'   => 'required|string|max:100',
+            'contacto_email'    => 'required|email',
+            'contacto_telefono' => 'nullable|string|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Los datos enviados no son válidos.', 422, $validator->errors()->toArray());
+        }
+
+        return $this->successResponse(Empresa::create($validator->validated()), 201);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * @OA\Get(
+     *     path="/empresas/{id}",
+     *     operationId="getEmpresa",
+     *     tags={"Empresas"},
+     *     summary="Obtener empresa por ID",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *     @OA\Response(response=200, description="Empresa encontrada",
+     *         @OA\JsonContent(ref="#/components/schemas/Empresa")),
+     *     @OA\Response(response=404, description="No encontrada")
+     * )
      */
-    public function store(Request $request)
+    public function show(string $empresa): JsonResponse
     {
-        //
+        $model = Empresa::find($empresa);
+        if (!$model) {
+            return $this->errorResponse('Empresa no encontrada.', 404);
+        }
+        return $this->successResponse($model);
     }
 
     /**
-     * Display the specified resource.
+     * @OA\Put(
+     *     path="/empresas/{id}",
+     *     operationId="updateEmpresa",
+     *     tags={"Empresas"},
+     *     summary="Actualizar empresa",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *     @OA\RequestBody(required=true,
+     *         @OA\JsonContent(ref="#/components/schemas/EmpresaInput")),
+     *     @OA\Response(response=200, description="Empresa actualizada"),
+     *     @OA\Response(response=404, description="No encontrada")
+     * )
      */
-    public function show(Empresa $empresa)
+    public function update(Request $request, string $empresa): JsonResponse
     {
-        //
+        $model = Empresa::find($empresa);
+        if (!$model) {
+            return $this->errorResponse('Empresa no encontrada.', 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'nombre_empresa'    => 'sometimes|string|max:255',
+            'rut_empresa'       => 'sometimes|string|max:20|unique:empresas,rut_empresa,' . $model->id,
+            'email'             => 'sometimes|email|unique:empresas,email,' . $model->id,
+            'logo_url'          => 'nullable|url',
+            'rubro'             => 'nullable|string|max:100',
+            'tipo_empresa'      => 'sometimes|in:contratacion-directa,est,outsourcing',
+            'presentacion'      => 'nullable|string',
+            'beneficios'        => 'nullable|array',
+            'beneficios.*'      => 'string',
+            'contacto_nombre'   => 'sometimes|string|max:100',
+            'contacto_email'    => 'sometimes|email',
+            'contacto_telefono' => 'nullable|string|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Los datos enviados no son válidos.', 422, $validator->errors()->toArray());
+        }
+
+        $model->update($validator->validated());
+        return $this->successResponse($model->fresh());
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * @OA\Patch(
+     *     path="/empresas/{id}/validar",
+     *     operationId="validarEmpresa",
+     *     tags={"Empresas"},
+     *     summary="Validar empresa (solo administración)",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *     @OA\Response(response=200, description="Empresa validada"),
+     *     @OA\Response(response=404, description="No encontrada")
+     * )
      */
-    public function edit(Empresa $empresa)
+    public function validar(string $empresa): JsonResponse
     {
-        //
+        $model = Empresa::find($empresa);
+        if (!$model) {
+            return $this->errorResponse('Empresa no encontrada.', 404);
+        }
+        $model->update(['validado' => true]);
+        return $this->successResponse($model->fresh());
     }
 
     /**
-     * Update the specified resource in storage.
+     * @OA\Delete(
+     *     path="/empresas/{id}",
+     *     operationId="deleteEmpresa",
+     *     tags={"Empresas"},
+     *     summary="Desactivar empresa",
+     *     description="Desactiva el perfil sin eliminarlo de la base de datos.",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *     @OA\Response(response=200, description="Empresa desactivada"),
+     *     @OA\Response(response=404, description="No encontrada")
+     * )
      */
-    public function update(Request $request, Empresa $empresa)
+    public function destroy(string $empresa): JsonResponse
     {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Empresa $empresa)
-    {
-        //
+        $model = Empresa::find($empresa);
+        if (!$model) {
+            return $this->errorResponse('Empresa no encontrada.', 404);
+        }
+        $model->update(['activo' => false]);
+        return $this->successResponse(['message' => 'Empresa desactivada exitosamente.']);
     }
 }
