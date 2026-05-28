@@ -2,7 +2,7 @@
     "openapi": "3.0.0",
     "info": {
         "title": "ProviEmplea API",
-        "description": "API REST para la plataforma de empleo ProviEmplea de Providencia. Permite gestionar talentos, empresas y procesos de selección con curriculum ciego.",
+        "description": "API REST para la plataforma de empleo ProviEmplea de Providencia. Permite gestionar talentos, empresas y procesos de selección con curriculum ciego.\n\n### Rendimiento y Optimización\n- **Limitación de Tasa (Rate Limiting):** Todas las solicitudes de la API están sujetas a un límite de **60 peticiones por minuto** por dirección IP o usuario autenticado. Al exceder este límite, el servidor retornará un estado `429 Too Many Requests` acompañado de cabeceras de control (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After`).\n- **Estrategia de Caché:** El endpoint de estadísticas administrativas (`GET /api/admin/estadisticas`) implementa almacenamiento en caché del servidor con un tiempo de vida (TTL) de **5 minutos (300 segundos)**. La caché se invalida de forma proactiva y automática ante cualquier creación, modificación o desactivación de perfiles, empresas o intermediaciones.\n- **Guía de Consumo Eficiente:** Se recomienda a los sistemas consumidores almacenar localmente los datos de estadísticas para no generar peticiones redundantes antes de que expire el TTL del caché en el servidor, garantizando así un rendimiento óptimo de la aplicación.",
         "version": "1.0.0"
     },
     "servers": [
@@ -50,6 +50,29 @@
                                 }
                             }
                         }
+                    },
+                    "429": {
+                        "description": "Demasiadas peticiones (Rate Limiting). Se permite un máximo de 60 peticiones por minuto por IP/Usuario.",
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "description": "Límite máximo permitido por minuto",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Peticiones restantes disponibles en el bloque actual",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            },
+                            "Retry-After": {
+                                "description": "Segundos a esperar antes de reintentar",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -86,6 +109,9 @@
                     },
                     "422": {
                         "description": "Errores de validación"
+                    },
+                    "429": {
+                        "description": "Demasiadas peticiones"
                     }
                 }
             }
@@ -151,6 +177,9 @@
                     },
                     "404": {
                         "description": "Contacto no encontrado"
+                    },
+                    "429": {
+                        "description": "Demasiadas peticiones"
                     }
                 }
             }
@@ -160,11 +189,21 @@
                 "tags": [
                     "Administración"
                 ],
-                "summary": "Estadísticas generales de la plataforma",
+                "summary": "Estadísticas generales de la plataforma (Cached)",
+                "description": "Retorna el resumen acumulado de perfiles, empresas y estados de intermediación en la plataforma. Para optimizar el rendimiento y disminuir cargas en el servidor, este endpoint almacena los resultados en una caché del lado del servidor durante 5 minutos (300 segundos). Recomendación al consumidor: evitar llamadas repetitivas en intervalos menores a este periodo para un rendimiento óptimo. La caché se invalida proactivamente al registrar o editar personas, empresas o intermediaciones.",
                 "operationId": "getEstadisticas",
                 "responses": {
                     "200": {
-                        "description": "Estadísticas generadas",
+                        "description": "Estadísticas generadas exitosamente",
+                        "headers": {
+                            "Cache-Control": {
+                                "description": "Directiva de caché que indica que la respuesta es almacenable",
+                                "schema": {
+                                    "type": "string",
+                                    "example": "public, max-age=300"
+                                }
+                            }
+                        },
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -199,6 +238,23 @@
                                         }
                                     },
                                     "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Demasiadas peticiones (Rate Limiting)",
+                        "headers": {
+                            "X-RateLimit-Limit": {
+                                "description": "Límite por minuto",
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            },
+                            "X-RateLimit-Remaining": {
+                                "description": "Restantes",
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }

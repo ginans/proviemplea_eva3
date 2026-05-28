@@ -37,4 +37,10 @@ class ContactoSolicitado extends Model
     {
         return $this->belongsTo(Persona::class);
     }
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => \Illuminate\Support\Facades\Cache::forget('admin_estadisticas'));
+        static::deleted(fn () => \Illuminate\Support\Facades\Cache::forget('admin_estadisticas'));
+    }
 }

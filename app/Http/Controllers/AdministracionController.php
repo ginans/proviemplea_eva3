@@ -7,6 +7,7 @@ use App\Models\Empresa;
 use App\Models\Persona;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 use OpenApi\Attributes as OA;
 
@@ -23,6 +24,15 @@ class AdministracionController extends Controller
         response: 200,
         description: "Listado exitoso",
         content: new OA\JsonContent(type: "array", items: new OA\Items(ref: "#/components/schemas/ContactoSolicitado"))
+    )]
+    #[OA\Response(
+        response: 429,
+        description: "Demasiadas peticiones (Rate Limiting). Se permite un máximo de 60 peticiones por minuto por IP/Usuario.",
+        headers: [
+            new OA\Header(header: "X-RateLimit-Limit", schema: new OA\Schema(type: "integer"), description: "Límite máximo permitido por minuto"),
+            new OA\Header(header: "X-RateLimit-Remaining", schema: new OA\Schema(type: "integer"), description: "Peticiones restantes disponibles en el bloque actual"),
+            new OA\Header(header: "Retry-After", schema: new OA\Schema(type: "integer"), description: "Segundos a esperar antes de reintentar")
+        ]
     )]
     public function listarContactos(Request $request): JsonResponse
     {
@@ -51,6 +61,7 @@ class AdministracionController extends Controller
     )]
     #[OA\Response(response: 409, description: "Ya existe una solicitud activa")]
     #[OA\Response(response: 422, description: "Errores de validación")]
+    #[OA\Response(response: 429, description: "Demasiadas peticiones")]
     public function crearContacto(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -100,6 +111,7 @@ class AdministracionController extends Controller
         content: new OA\JsonContent(ref: "#/components/schemas/ContactoSolicitado")
     )]
     #[OA\Response(response: 404, description: "Contacto no encontrado")]
+    #[OA\Response(response: 429, description: "Demasiadas peticiones")]
     public function actualizarEstado(Request $request, string $contacto): JsonResponse
     {
         $model = ContactoSolicitado::find($contacto);
@@ -134,11 +146,15 @@ class AdministracionController extends Controller
         path: "/admin/estadisticas",
         operationId: "getEstadisticas",
         tags: ["Administración"],
-        summary: "Estadísticas generales de la plataforma"
+        summary: "Estadísticas generales de la plataforma (Cached)",
+        description: "Retorna el resumen acumulado de perfiles, empresas y estados de intermediación en la plataforma. Para optimizar el rendimiento y disminuir cargas en el servidor, este endpoint almacena los resultados en una caché del lado del servidor durante 5 minutos (300 segundos). Recomendación al consumidor: evitar llamadas repetitivas en intervalos menores a este periodo para un rendimiento óptimo. La caché se invalida proactivamente al registrar o editar personas, empresas o intermediaciones."
     )]
     #[OA\Response(
         response: 200,
-        description: "Estadísticas generadas",
+        description: "Estadísticas generadas exitosamente",
+        headers: [
+            new OA\Header(header: "Cache-Control", schema: new OA\Schema(type: "string", example: "public, max-age=300"), description: "Directiva de caché que indica que la respuesta es almacenable")
+        ],
         content: new OA\JsonContent(
             properties: [
                 new OA\Property(property: "total_personas", type: "integer", example: 45),
@@ -151,16 +167,28 @@ class AdministracionController extends Controller
             ]
         )
     )]
+    #[OA\Response(
+        response: 429,
+        description: "Demasiadas peticiones (Rate Limiting)",
+        headers: [
+            new OA\Header(header: "X-RateLimit-Limit", schema: new OA\Schema(type: "integer"), description: "Límite por minuto"),
+            new OA\Header(header: "X-RateLimit-Remaining", schema: new OA\Schema(type: "integer"), description: "Restantes")
+        ]
+    )]
     public function estadisticas(): JsonResponse
     {
-        return $this->successResponse([
-            'total_personas'       => Persona::count(),
-            'personas_validadas'   => Persona::where('validado', true)->count(),
-            'total_empresas'       => Empresa::count(),
-            'empresas_validadas'   => Empresa::where('validado', true)->count(),
-            'contactos_pendientes' => ContactoSolicitado::where('estado', 'pendiente')->count(),
-            'contactos_en_proceso' => ContactoSolicitado::whereIn('estado', ['contactado', 'entrevista'])->count(),
-            'contactos_exitosos'   => ContactoSolicitado::where('estado', 'seleccionado')->count(),
-        ]);
+        $stats = Cache::remember('admin_estadisticas', 300, function () {
+            return [
+                'total_personas'       => Persona::count(),
+                'personas_validadas'   => Persona::where('validado', true)->count(),
+                'total_empresas'       => Empresa::count(),
+                'empresas_validadas'   => Empresa::where('validado', true)->count(),
+                'contactos_pendientes' => ContactoSolicitado::where('estado', 'pendiente')->count(),
+                'contactos_en_proceso' => ContactoSolicitado::whereIn('estado', ['contactado', 'entrevista'])->count(),
+                'contactos_exitosos'   => ContactoSolicitado::where('estado', 'seleccionado')->count(),
+            ];
+        });
+
+        return $this->successResponse($stats);
     }
 }
