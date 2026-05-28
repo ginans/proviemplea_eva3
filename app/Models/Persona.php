@@ -54,4 +54,10 @@ class Persona extends Model
             'persona_discapacidad' => $this->persona_discapacidad,
         ];
     }
+
+    protected static function booted(): void
+    {
+        static::saved(fn () => \Illuminate\Support\Facades\Cache::forget('admin_estadisticas'));
+        static::deleted(fn () => \Illuminate\Support\Facades\Cache::forget('admin_estadisticas'));
+    }
 }
