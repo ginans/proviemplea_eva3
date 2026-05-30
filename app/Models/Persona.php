@@ -52,6 +52,7 @@ class Persona extends Model
             'idiomas'              => $this->idiomas,
             'portafolio_url'       => $this->portafolio_url,
             'persona_discapacidad' => $this->persona_discapacidad,
+            'validado'             => $this->validado,
         ];
     }
 
