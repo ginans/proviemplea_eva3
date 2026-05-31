@@ -39,6 +39,7 @@ class PersonaController extends Controller
         return $this->successResponse($query->get()->map(fn($p) => $p->getCvCiego()));
     }
 
+
     #[OA\Post(
         path: "/personas",
         operationId: "createPersona",
