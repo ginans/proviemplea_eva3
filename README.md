@@ -10,6 +10,10 @@
 
 Para garantizar la no discriminación arbitraria, transparencia y confidencialidad en los procesos de selección, la API implementa el principio de **CV Ciego**, ocultando datos sociodemográficos sensibles (nombres, género, edad, comuna de residencia) en las consultas públicas de reclutamiento, exponiendo únicamente habilidades, competencias, experiencia y preferencias laborales del talento.
 
+🔗 Repositorio del Frontend: [FLAMEXone/proviemplea_eva3_frontend](https://github.com/FLAMEXone/proviemplea_eva3_frontend)
+
+🔗 Deploy en Vercel: [https://proviemplea.vercel.app/](https://proviemplea.vercel.app/)
+
 ---
 
 ## 🚀 Requisitos y Setup Rápido
