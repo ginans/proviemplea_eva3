@@ -39,6 +39,7 @@ class PersonaController extends Controller
         return $this->successResponse($query->get()->map(fn($p) => $p->getCvCiego()));
     }
 
+
     #[OA\Post(
         path: "/personas",
         operationId: "createPersona",
@@ -84,6 +85,7 @@ class PersonaController extends Controller
         $data = $validator->validated();
         $data['codigo_talento'] = $this->generarCodigoTalento();
         $data['porcentaje_completitud'] = $this->calcularCompletitud($data);
+        $data['validado'] = ($data['porcentaje_completitud'] === 100);
 
         return $this->successResponse(Persona::create($data), 201);
     }
@@ -158,7 +160,9 @@ class PersonaController extends Controller
         }
 
         $data = $validator->validated();
-        $data['porcentaje_completitud'] = $this->calcularCompletitud(array_merge($model->toArray(), $data));
+        $merged = array_merge($model->toArray(), $data);
+        $data['porcentaje_completitud'] = $this->calcularCompletitud($merged);
+        $data['validado'] = ($data['porcentaje_completitud'] === 100);
         $model->update($data);
 
         return $this->successResponse($model->fresh());
@@ -218,10 +222,23 @@ class PersonaController extends Controller
 
     private function calcularCompletitud(array $data): int
     {
-        $campos = ['email','telefono','resumen','nivel_educacional','titulo_carrera',
-                   'anio_egreso','anios_experiencia','competencias','rango_renta',
-                   'tipo_jornada','modalidad'];
-        $completados = count(array_filter($campos, fn($c) => !empty($data[$c])));
+        $campos = [
+            'email', 'telefono', 'resumen', 'nivel_educacional', 'titulo_carrera',
+            'anio_egreso', 'anios_experiencia', 'areas_experiencia', 'competencias',
+            'rango_renta', 'tipo_jornada', 'modalidad', 'cursos', 'idiomas', 'portafolio_url'
+        ];
+        $completados = count(array_filter($campos, function($c) use ($data) {
+            if (!isset($data[$c]) || $data[$c] === null) {
+                return false;
+            }
+            if (is_array($data[$c])) {
+                return count($data[$c]) > 0;
+            }
+            if (is_string($data[$c])) {
+                return trim($data[$c]) !== '';
+            }
+            return true;
+        }));
         return (int) round(($completados / count($campos)) * 100);
     }
 }
